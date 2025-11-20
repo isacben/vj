@@ -5,7 +5,6 @@ import (
 	"fmt"
 )
 
-
 func main() {
 	// Sample JSON data
 	jsonData := `{
@@ -65,8 +64,8 @@ func main() {
 	fmt.Println("\nWith addresses expanded:")
 	fmt.Print(tree.PrintAsJSONFromRoot())
 
-    // Collapse tree
-    tree.Collapse("user")
+	// Collapse tree
+	tree.Collapse("user")
 	fmt.Println("\nWith user collapsed:")
 	fmt.Print(tree.PrintAsJSONFromRoot())
 }

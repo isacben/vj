@@ -1,11 +1,11 @@
 package main
 
 import (
-    "fmt"
-    "strconv"
-    "strings"
-    "encoding/json"
-    "regexp"
+	"encoding/json"
+	"fmt"
+	"regexp"
+	"strconv"
+	"strings"
 )
 
 type JSONTree struct {
@@ -22,8 +22,7 @@ func NewJSONTree() *JSONTree {
 	}
 }
 
-
-// ========== Core methods ========== 
+// ========== Core methods ==========
 
 // GetValue returns the value at the given path
 func (jt *JSONTree) GetValue(path string) interface{} {
@@ -57,8 +56,7 @@ func (jt *JSONTree) AddChild(parent string, child string) {
 	jt.Children[parent] = append(jt.Children[parent], child)
 }
 
-
-// ========== Utility Methods ==========   
+// ========== Utility Methods ==========
 
 // GetNode returns the node at the given path
 func (jt *JSONTree) GetNode(path string) (*Node, bool) {
@@ -95,8 +93,7 @@ func (jt *JSONTree) SetValue(path string, value interface{}) bool {
 	return false
 }
 
-
-// ========== Pretty Printing ========== 
+// ========== Pretty Printing ==========
 
 // Print returns a formatted string representation
 func (jt *JSONTree) Print(startPath string, indent int) string {
@@ -171,11 +168,11 @@ func (jt *JSONTree) PrintAsJSON(startPath string, indent int) string {
 	}
 
 	if jt.IsCollapsed(startPath) {
-        childCount := len(jt.Children[startPath])
-        if jt.Nodes[startPath].Type == ArrayType {
-            return fmt.Sprintf("[...] // %d items", childCount)
-        }
-        return fmt.Sprintf("{...} // %d properties", childCount)
+		childCount := len(jt.Children[startPath])
+		if jt.Nodes[startPath].Type == ArrayType {
+			return fmt.Sprintf("[...] // %d items", childCount)
+		}
+		return fmt.Sprintf("{...} // %d properties", childCount)
 	}
 
 	switch node.Type {
@@ -239,8 +236,7 @@ func (jt *JSONTree) PrintAsJSONFromRoot() string {
 	return jt.PrintAsJSON("", 0)
 }
 
-
-// ========== Tree Building ========== 
+// ========== Tree Building ==========
 
 // BuildTree constructs the tree from JSON data
 func BuildTree(data interface{}, basePath string, tree *JSONTree) *JSONTree {

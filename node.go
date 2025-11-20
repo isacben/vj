@@ -1,8 +1,8 @@
 package main
 
 import (
-    "fmt"
-    "regexp"
+	"fmt"
+	"regexp"
 )
 
 type NodeType string
@@ -58,7 +58,7 @@ func getDepth(path string) int {
 }
 
 func buildChildPath(basePath, key string,
-                    isArray bool) string {
+	isArray bool) string {
 	if basePath == "" {
 		return key
 	}
