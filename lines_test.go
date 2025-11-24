@@ -5,41 +5,38 @@ import (
 	"testing"
 )
 
-func TestUpdateVisibleLines(t *testing.T) {
+func TestNewVisibleLines(t *testing.T) {
 	tests := []struct {
-		name     string
-        firstLine int
-		total    int
-        content []line
-		expected []line
+		name      string
+		firstLine int
+		total     int
+		content   string
+		expected  []line
 	}{
 		{
 			"all lines visible",
-            0,
+			0,
 			10,
-            []line{{0, "line0"}, {1, "line1"}, {2, "line2"}},
-            []line{{0, "line0"}, {1, "line1"}, {2, "line2"}},
+			"line0\nline1\nline2",
+			[]line{{0, "line0"}, {1, "line1"}, {2, "line2"}},
 		},
 		{
 			"two lines visible",
-            1,
+			1,
 			2,
-            []line{{0, "line0"}, {1, "line1"}, {2, "line2"}},
-            []line{{1, "line1"}, {2, "line2"}},
+			"line0\nline1\nline2",
+			[]line{{1, "line1"}, {2, "line2"}},
 		},
 		{
 			"four lines visible",
-            2,
+			2,
 			4,
-            []line{
-                {0, "line0"}, {1, "line1"}, {2, "line2"},
-                {3, "line3"}, {4, "line4"}, {5, "line5"},
-                {6, "line6"}, {7, "line7"}, {8, "line7"},
-            },
-            []line{
-                {2, "line2"}, {3, "line3"}, {4, "line4"},
-                {5, "line5"},
-            },
+		    "line0\nline1\nline2\nline3\n" +
+            "line4\nline5\nline6\nline7\nline7",
+			[]line{
+				{2, "line2"}, {3, "line3"}, {4, "line4"},
+				{5, "line5"},
+			},
 		},
 	}
 

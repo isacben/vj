@@ -1,0 +1,22 @@
+{
+    "user": {
+        "name": "John",
+        "list": [
+                    1,
+                    2,
+                    "three",
+                    4
+        ],
+        "escaped": "{\"hello\": \"world\"}",
+        "addresses": [
+            {
+                "street": "123 Main St",
+                "zipcode": "12345"
+            },
+            {
+                "street": "456 Oak Ave",
+                "zipcode": "67890"
+            }
+        ]
+    }
+}
