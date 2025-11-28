@@ -174,18 +174,35 @@ func (m model) View() string {
 
 func (m model) Print() string {
 	s := ""
-	for _, line := range m.visibleLines.linesOnScreen {
-		cursor := " "
-		if line.num == m.cursorY {
-			cursor = ">"
-		}
-		s += fmt.Sprintf(
-			"%d %s %s\n",
-			line.num,
-			cursor,
-			line.content,
-		)
-	}
+
+    for i, line := range m.visibleLines.linesOnScreen {
+        // Print line at cursor
+        if i + m.visibleLines.firstLine == m.cursorY {
+            s += fmt.Sprintf(
+                "%d > %s \n",
+                m.tree.VirtualToRealLines[m.cursorY] + 1,
+                line.content,
+            )
+        }
+
+        // Print lines before cursor
+        if i + m.visibleLines.firstLine < m.cursorY {
+            s += fmt.Sprintf(
+                "%d %s \n",
+                (m.cursorY - m.visibleLines.firstLine) - i,
+                line.content,
+            )
+        }
+
+        // Print lines after cursor
+        if i + m.visibleLines.firstLine > m.cursorY {
+            s += fmt.Sprintf(
+                "%d %s \n",
+                i - (m.cursorY - m.visibleLines.firstLine),
+                line.content,
+            )
+        }
+    }
 
 	return strings.TrimSuffix(s, "\n")
 }
