@@ -227,27 +227,27 @@ func TestGetNode(t *testing.T) {
 		path     string
 		expected string
 	}{
-        {
-            "get object node",
-            "user",
-            "user",
-        },
-        {
-            "get nested node",
-            "user.age",
-            "age",
-        },
-    }
+		{
+			"get object node",
+			"user",
+			"user",
+		},
+		{
+			"get nested node",
+			"user.age",
+			"age",
+		},
+	}
 
 	tree := BuildTree(data, "", nil)
 
 	for _, tt := range tests {
-        t.Run(tt.name, func(t *testing.T) {
-            node, exists := tree.GetNode(tt.path)
-            assert.True(t, exists, "Node should exist")
-            assert.Equal(t, tt.expected, node.Key)
-        })
-    }
+		t.Run(tt.name, func(t *testing.T) {
+			node, exists := tree.GetNode(tt.path)
+			assert.True(t, exists, "Node should exist")
+			assert.Equal(t, tt.expected, node.Key)
+		})
+	}
 }
 
 func TestGetNodeAtLine(t *testing.T) {
@@ -256,7 +256,7 @@ func TestGetNodeAtLine(t *testing.T) {
 			"name": "John",
 			"age":  30.0,
 		},
-        "email": "john@example.com",
+		"email": "john@example.com",
 		"identifications": []interface{}{
 			map[string]interface{}{
 				"type":   "passport",
@@ -267,26 +267,70 @@ func TestGetNodeAtLine(t *testing.T) {
 				"number": "987654321",
 			},
 		},
-        "active": true,
+		"active": true,
 	}
 
 	tree := BuildTree(data, "", nil)
 
-    // Use the non JSON print version, because
-    // the line numbers follow the same pattern
-    // as the JSON print
-    printedTree := tree.PrintFromRoot()
-    lines := strings.Split(printedTree, "\n")
+	// Use the non JSON print version, because
+	// the line numbers follow the same pattern
+	// as the JSON print
+	printedTree := tree.PrintFromRoot()
+	lines := strings.Split(printedTree, "\n")
 
 	for i, line := range lines {
-        t.Run(fmt.Sprintf("test line %d", i), func(t *testing.T) {
-            // Get the node at each line
-            node, exists := tree.GetNodeAtLine(i)
+		t.Run(fmt.Sprintf("test line %d", i), func(t *testing.T) {
+			// Get the node at each line
+			node, exists := tree.GetNodeAtLine(i)
+			if exists {
+				// If there is a node, check if the printed
+				// line contains the node key
+				assert.True(t, strings.Contains(line, node.Key))
+			}
+		})
+	}
+}
+
+func TestGetNodeAtLine_CompressedNode(t *testing.T) {
+	data := map[string]interface{}{
+		"user": map[string]interface{}{
+			"name": "John",
+			"age":  30.0,
+		},
+		"email": "john@example.com",
+		"identifications": []interface{}{
+			map[string]interface{}{
+				"type":   "passport",
+				"number": "123456789",
+			},
+			map[string]interface{}{
+				"type":   "license",
+				"number": "987654321",
+			},
+		},
+		"active": true,
+	}
+
+    tree := BuildTree(data, "", nil)
+    tree.Collapse("identifications[0]")
+
+    // Print to update VirtualToRealLines
+    _ = tree.PrintAsJSONFromRoot()
+
+    expectedNode, exists := tree.GetNode("identifications[1]")
+    assert.True(t, exists, "Expected node should exist")
+    found := 0
+
+    if exists {
+        for _, realLineNumber := range(tree.VirtualToRealLines) {
+            actualNode, exists := tree.GetNodeAtLine(realLineNumber)
             if exists {
-                // If there is a node, check if the printed
-                // line contains the node key
-                assert.True(t, strings.Contains(line, node.Key))
+                if actualNode.Path == expectedNode.Path {
+                    found++
+                }
             }
-        })
+        }
     }
+    assert.Equal(t, 1, found,
+        "Expected node not properly found using VirtualToRealLines")
 }

@@ -24,6 +24,7 @@ type Node struct {
 	Depth          int         `json:"depth"`
 	Key            string      `json:"key"`
 	IsArrayElement bool        `json:"isArrayElement"`
+	LineNumber     int
 }
 
 // Helper functions

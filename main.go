@@ -27,7 +27,8 @@ func main() {
                         "zipcode": "67890"
                 }
             ]
-        }
+        },
+        "email": "user@mail.com"
     }`
 
 	// Parse JSON
@@ -96,11 +97,27 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			case "left", "h":
 				{
-					log.Println("trying to collapse")
-					m.tree.Collapse("user.addresses")
-					log.Println(m.tree.PrintAsJSONFromRoot())
-					m.visibleLines.UpdateContent(m.tree.PrintAsJSONFromRoot())
-					m.visibleLines.UpdateVisibleLines(m.visibleLines.firstLine, m.visibleLines.total)
+					physicalLine := m.tree.VirtualToRealLines[m.cursorY]
+					log.Println("collapse physical line:", physicalLine)
+					node, exists := m.tree.GetNodeAtLine(physicalLine)
+					if exists {
+						m.tree.Collapse(node.Path)
+						m.visibleLines.UpdateContent(m.tree.PrintAsJSONFromRoot())
+						m.visibleLines.UpdateVisibleLines(m.visibleLines.firstLine,
+							m.visibleLines.total)
+					}
+				}
+			case "right", "l":
+				{
+					physicalLine := m.tree.VirtualToRealLines[m.cursorY]
+					log.Println("expand physical line:", physicalLine)
+					node, exists := m.tree.GetNodeAtLine(physicalLine)
+					if exists {
+						m.tree.Expand(node.Path)
+						m.visibleLines.UpdateContent(m.tree.PrintAsJSONFromRoot())
+						m.visibleLines.UpdateVisibleLines(m.visibleLines.firstLine,
+							m.visibleLines.total)
+					}
 				}
 			}
 		}
