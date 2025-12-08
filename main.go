@@ -7,17 +7,22 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"unicode"
 
 	tea "github.com/charmbracelet/bubbletea"
+	// "github.com/charmbracelet/lipgloss"
 )
 
 func main() {
 	// Sample JSON data
+	//jsonData := `[
+    //    {
+    //        "helo": ["hola","oi"]
+    //    }
+    //]`
 	jsonData := `{
         "user": {
             "name": "John",
-            "list": [1, 2, "three", 4, true, null],
+            "list": [1, 200, "three", 4, true, null],
             "escaped": "{\"hello\": \"world\"}",
             "addresses": [
                 {
@@ -43,7 +48,7 @@ func main() {
 
 	// Build tree
 	tree := BuildTree(data, "", nil)
-    SetCurrentTheme("dark")
+	SetCurrentTheme("dark")
 
 	if len(os.Getenv("DEBUG")) > 0 {
 		f, err := tea.LogToFile("debug.log", "debug")
@@ -66,6 +71,8 @@ func main() {
 type model struct {
 	tree             *JSONTree
 	visibleLines     *VisibleLines
+	visibleLines2     *VisibleLines2
+    VirtualToRealLines []int
 	firstVisibleLine int
 	windowLines      int
 	margin           int
@@ -95,23 +102,29 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "down", "j":
 				{
 					m.cursorY++
-					if m.cursorY >= len(m.visibleLines.content) {
-						m.cursorY = len(m.visibleLines.content) - 1
+					if m.cursorY >= len(m.visibleLines2.content) {
+						m.cursorY = len(m.visibleLines2.content) - 1
 					}
 					m.ScrollDown()
 				}
+
 			case "left", "h":
 				{
 					physicalLine := m.tree.VirtualToRealLines[m.cursorY]
+                    for i,n := range m.tree.VirtualToRealLines {
+                        log.Println(i, n)
+                    }
+
 					log.Println("collapse physical line:", physicalLine)
 					node, exists := m.tree.GetNodeAtLine(physicalLine)
 					if exists {
 						m.tree.Collapse(node.Path)
-						m.visibleLines.UpdateContent(m.tree.PrintAsJSONFromRoot())
-						m.visibleLines.UpdateVisibleLines(m.visibleLines.firstLine,
-							m.visibleLines.total)
+						m.visibleLines2.UpdateContent2(m.tree.PrintAsJSON2())
+						m.visibleLines2.UpdateVisibleLines2(m.visibleLines2.firstLine,
+							m.visibleLines2.total)
 					}
 				}
+
 			case "right", "l":
 				{
 					physicalLine := m.tree.VirtualToRealLines[m.cursorY]
@@ -119,9 +132,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					node, exists := m.tree.GetNodeAtLine(physicalLine)
 					if exists {
 						m.tree.Expand(node.Path)
-						m.visibleLines.UpdateContent(m.tree.PrintAsJSONFromRoot())
-						m.visibleLines.UpdateVisibleLines(m.visibleLines.firstLine,
-							m.visibleLines.total)
+						m.visibleLines2.UpdateContent2(m.tree.PrintAsJSON2())
+						m.visibleLines2.UpdateVisibleLines2(m.visibleLines2.firstLine,
+							m.visibleLines2.total)
 					}
 				}
 			}
@@ -134,17 +147,27 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				//m.firstVisibleLine = 0
 				m.margin = 3
 				m.windowLines = msg.Height - 1 // for the status bar
-				m.visibleLines = NewVisibleLines(
+                
+				m.tree.PrintAsJSONFromRoot()
+
+                //}
+				// m.visibleLines = NewVisibleLines(
+				//	m.firstVisibleLine, m.windowLines,
+			    //	m.tree.PrintAsJSONFromRoot(),
+				// )
+				 m.visibleLines2 = NewVisibleLines2(
 					m.firstVisibleLine, m.windowLines,
-					m.tree.PrintAsJSONFromRoot(),
-				)
+			    	m.tree.PrintAsJSON2(),
+				 )
+
+
 				m.ready = true
 			} else {
 				m.windowLines = msg.Height - 1 // for the status bar
-				m.firstVisibleLine = m.visibleLines.firstLine
+				m.firstVisibleLine = m.visibleLines2.firstLine
 
 				log.Printf("cursor: %d; firstVis: %d; vl_firstVis: %d",
-					m.cursorY, m.firstVisibleLine, m.visibleLines.firstLine)
+					m.cursorY, m.firstVisibleLine, m.visibleLines2.firstLine)
 
 				if m.windowLines <= 2*m.margin+3 {
 					m.margin = 0
@@ -160,7 +183,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.firstVisibleLine = m.cursorY - m.windowLines + 1
 				}
 
-				m.visibleLines.UpdateVisibleLines(
+				m.visibleLines2.UpdateVisibleLines2(
 					m.firstVisibleLine, m.windowLines)
 			}
 		}
@@ -173,88 +196,234 @@ func (m model) View() string {
 	if !m.ready {
 		return "loading"
 	}
-	s := m.Print()
+	s := m.Print2()
 	return s
 }
 
 func (m model) Print() string {
 	s := ""
 
-    for i, line := range m.visibleLines.linesOnScreen {
-        // Print line at cursor
-        if i + m.visibleLines.firstLine == m.cursorY {
-            num := m.tree.VirtualToRealLines[m.cursorY] + 1
-            node, exists := m.tree.GetNodeAtLine(m.tree.VirtualToRealLines[m.cursorY])
-            if exists {
-                log.Println(node.IsArrayElement)
-            }
+	for i, line := range m.visibleLines.linesOnScreen {
+		// Print line at cursor
+		if i+m.visibleLines.firstLine == m.cursorY {
+			num := m.tree.VirtualToRealLines[m.cursorY] + 1
 
-            cursorChar := line.content[:1]
-            s += fmt.Sprintf(
-                "%s %s%s \n",
-                lineNumbersCol.Render(strconv.Itoa(num) + " "),
-                // TODO(isaac): find a better way to display the cursor
-                cursorStyle.Render(cursorChar),
-                line.content[1:],
-                //printLineWithCursor(line.content),
-            )
-        }
+			cursorChar := line.content[:1]
+			s += fmt.Sprintf(
+				"%s %s%s \n",
+				lineNumbersCol.Render(strconv.Itoa(num)+" "),
+				// TODO(isaac): find a better way to display the cursor
+				cursorStyle.Render(cursorChar),
+				line.content[1:],
+				//printLineWithCursor(line.content),
+			)
+		}
 
-        // Print lines before cursor
-        if i + m.visibleLines.firstLine < m.cursorY {
-            num := (m.cursorY - m.visibleLines.firstLine) - i
-            s += fmt.Sprintf(
-                "%s %s \n",
-                lineNumbersCol.Render(strconv.Itoa(num)),
-                line.content,
-            )
-        }
+		// Print lines before cursor
+		if i+m.visibleLines.firstLine < m.cursorY {
+			num := (m.cursorY - m.visibleLines.firstLine) - i
+			s += fmt.Sprintf(
+				"%s %s \n",
+				lineNumbersCol.Render(strconv.Itoa(num)),
+				line.content,
+			)
+		}
 
-        // Print lines after cursor
-        if i + m.visibleLines.firstLine > m.cursorY {
-            num := i - (m.cursorY - m.visibleLines.firstLine)
-            s += fmt.Sprintf(
-                "%s %s \n",
-                lineNumbersCol.Render(strconv.Itoa(num)),
-                line.content,
-            )
-        }
-    }
+		// Print lines after cursor
+		if i+m.visibleLines.firstLine > m.cursorY {
+			num := i - (m.cursorY - m.visibleLines.firstLine)
+			s += fmt.Sprintf(
+				"%s %s \n",
+				lineNumbersCol.Render(strconv.Itoa(num)),
+				line.content,
+			)
+		}
+	}
 
 	return strings.TrimSuffix(s, "\n")
 }
 
-func printLineWithCursor(line string) string {
-    cursorChar := " "
-    pos := 0
-    for i, char := range line {
-        if !unicode.IsSpace(char) {
-            cursorChar = string(char)
-            pos = i
-            break
+func (m model) Print2() string {
+	s := ""
+
+	for i, line := range m.visibleLines2.linesOnScreen {
+		// Print line at cursor
+		if i+m.visibleLines2.firstLine == m.cursorY {
+			num := m.tree.VirtualToRealLines[m.cursorY] + 1
+
+			s += fmt.Sprintf(
+				"%s %s \n",
+				lineNumbersCol.Render(strconv.Itoa(num)+" "),
+                RenderLine(line, true),
+			)
+		}
+
+		// Print lines before cursor
+		if i+m.visibleLines2.firstLine < m.cursorY {
+			num := (m.cursorY - m.visibleLines2.firstLine) - i
+			s += fmt.Sprintf(
+				"%s %s \n",
+				lineNumbersCol.Render(strconv.Itoa(num)),
+				RenderLine(line, false),
+			)
+		}
+
+		// Print lines after cursor
+		if i+m.visibleLines2.firstLine > m.cursorY {
+			num := i - (m.cursorY - m.visibleLines2.firstLine)
+			s += fmt.Sprintf(
+				"%s %s \n",
+				lineNumbersCol.Render(strconv.Itoa(num)),
+				RenderLine(line, false),
+			)
+		}
+	}
+
+	return strings.TrimSuffix(s, "\n")
+}
+
+func RenderLine(line LineMetadata, hasCursor bool) string {
+    isSelected := false
+	indent := strings.Repeat("  ", line.Indent)
+
+	switch line.LineType {
+	case ContentWithBrace:
+        if line.IsArrayElement {
+            if line.IsCollapsed {
+                comma := ""
+                if !line.IsLastChild {
+                    comma = ","
+                }
+
+                return RenderIndent(indent, isSelected) +
+                    RenderSyntax("{", hasCursor, isSelected) +
+                    RenderSyntax("...}" + comma, false, isSelected)
+            }
+
+            return RenderIndent(indent, isSelected) + 
+                RenderSyntax(line.BracketChar, hasCursor, isSelected)
+
+        } else if line.Key != "" && !line.IsCollapsed {
+			// Key with opening bracket: "user": {
+			return RenderIndent(indent, isSelected) +
+                RenderSyntax(`"`, hasCursor, isSelected) +
+                RenderKey(line.Key, isSelected) +
+                RenderSyntax(`": ` + line.BracketChar, false, isSelected)
+
+		} else if line.IsCollapsed {
+			// Collapsed: "user": {...} or "items": [...]
+			//keyPart := keyStyle.Render(`"` + line.Key + `"`)
+			collapsedContent := ""
+            comma := ""
+
+            if !line.IsLastChild {
+                comma = ","
+            }
+
+			if line.BracketChar == "{" {
+				collapsedContent = "{...}" + comma
+			} else {
+				collapsedContent = "[...]" + comma
+			}
+
+			return RenderIndent(indent, isSelected) + 
+                RenderSyntax(`"`, hasCursor, isSelected) +
+                RenderKey(line.Key, isSelected) + 
+                RenderSyntax(`": ` + collapsedContent, false, isSelected)
+		} //else {
+			// Just opening bracket
+		//	return indent + line.BracketChar
+		//}
+
+    case OpenBracket:
+        if line.Key == "" {
+            if  !line.IsCollapsed {
+                return RenderIndent(indent, isSelected) + 
+                    RenderSyntax(line.BracketChar, hasCursor, isSelected)
+            } else {
+                return RenderIndent(indent, isSelected) + 
+                    RenderSyntax("{", hasCursor, isSelected) +
+                    RenderSyntax("...}", false, isSelected)
+            }
         }
-    }
-    return  line[:pos] +
-        cursorStyle.Render(cursorChar) +
-        line[pos+1:]
+
+	case CloseBracket:
+		comma := ""
+		if !line.IsLastChild {
+			comma = ","
+		}
+		return RenderIndent(indent, isSelected) + 
+            RenderSyntax(line.BracketChar, hasCursor, isSelected) + 
+            RenderSyntax(comma, false, isSelected)
+
+	case ContentLine:
+		comma := ""
+		if !line.IsLastChild {
+			comma = ","
+		}
+
+		if line.IsArrayElement {
+			// Array element: just the value
+			switch line.NodeType {
+			case StringType:
+				return RenderIndent(indent, isSelected) + 
+                    RenderString(`"`+line.Content+`"`, hasCursor, isSelected) +
+                    RenderSyntax(comma, false, isSelected)
+			case NumberType:
+				return RenderIndent(indent, isSelected) + 
+                    RenderNumber(line.Content, hasCursor, isSelected) + 
+                    RenderSyntax(comma, false, isSelected)
+			case BoolType:
+				return RenderIndent(indent, isSelected) + 
+                    RenderBoolean(line.Content, hasCursor, isSelected) +
+                    RenderSyntax(comma, false, isSelected)
+			case NullType:
+				return RenderIndent(indent, isSelected) + 
+                    RenderNull("null", hasCursor, isSelected) + 
+                    RenderSyntax(comma, false, isSelected)
+			}
+
+		} else {
+			// Object property: "key": value
+			valuePart := ""
+
+			switch line.NodeType {
+			case StringType:
+				valuePart = stringStyle.Render(`"` + line.Content + `"`)
+			case NumberType:
+				valuePart = numberStyle.Render(line.Content)
+			case BoolType:
+				valuePart = booleanStyle.Render(line.Content)
+			case NullType:
+				valuePart = nullStyle.Render("null")
+			}
+
+			return RenderIndent(indent, isSelected) +
+                RenderSyntax(`"`, hasCursor, isSelected) +
+                RenderKey(line.Key, isSelected) +
+                RenderSyntax(`": ` + valuePart + comma, false, isSelected)
+		}
+	}
+
+	return line.Content
 }
 
 func (m model) ScrollDown() {
-	if m.cursorY > m.visibleLines.firstLine+
-		m.visibleLines.total-1-m.margin {
+	if m.cursorY > m.visibleLines2.firstLine+
+		m.visibleLines2.total-1-m.margin {
 		m.firstVisibleLine = m.cursorY - m.windowLines + 1 +
 			m.margin
 
-		m.visibleLines.UpdateVisibleLines(m.firstVisibleLine,
+		m.visibleLines2.UpdateVisibleLines2(m.firstVisibleLine,
 			m.windowLines)
 	}
 }
 
 func (m model) ScrollUp() {
-	if m.cursorY < m.visibleLines.firstLine+m.margin {
+	if m.cursorY < m.visibleLines2.firstLine+m.margin {
 		m.firstVisibleLine = max(0, m.cursorY-m.margin)
 
-		m.visibleLines.UpdateVisibleLines(m.firstVisibleLine,
+		m.visibleLines2.UpdateVisibleLines2(m.firstVisibleLine,
 			m.windowLines)
 	}
 }
