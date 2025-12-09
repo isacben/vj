@@ -7,13 +7,15 @@ import (
 // Styles
 var (
 	lineNumbersCol lipgloss.Style
+    blankChar      lipgloss.Style
 	cursorStyle    lipgloss.Style
 	keyStyle       lipgloss.Style
 	stringStyle    lipgloss.Style
 	nullStyle      lipgloss.Style
 	booleanStyle   lipgloss.Style
 	numberStyle    lipgloss.Style
-	syntaxStyle     lipgloss.Style
+	syntaxStyle    lipgloss.Style
+    statusBarStyle lipgloss.Style
 )
 
 type Color string
@@ -34,7 +36,7 @@ var (
 	currentTheme = themes["nocolor"]
 
 	defaultCursor     = Color("#bb9af7")
-	defaultStatusBar  = Color("5")
+	defaultStatusBar  = Color("#414868")
 	defaultKey        = Color("#7dcfff")
 	defaultString     = Color("#9ece6a")
 	defaultNull       = Color("#565f89")
@@ -106,6 +108,14 @@ func SetCurrentTheme(name string) {
 
 	syntaxStyle = lipgloss.NewStyle().
 		Foreground(lipgloss.Color(currentTheme.Syntax))
+
+    statusBarStyle = lipgloss.NewStyle().
+        Align(lipgloss.Bottom).
+        Background(lipgloss.Color(currentTheme.StatusBar))
+
+    blankChar = lipgloss.NewStyle().
+        Foreground(lipgloss.Color(currentTheme.LineNumber))
+        
 }
 
 func RenderIndent(text string, selected bool) string {

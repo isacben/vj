@@ -74,7 +74,9 @@ type model struct {
 	visibleLines2     *VisibleLines2
     VirtualToRealLines []int
 	firstVisibleLine int
+    currentPath      string
 	windowLines      int
+    width            int
 	margin           int
 	cursorY          int
 	ready            bool
@@ -97,6 +99,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					if m.cursorY < 0 {
 						m.cursorY = 0
 					}
+
+                    physicalLine := m.tree.VirtualToRealLines[m.cursorY]
+                    node, exists := m.tree.GetNodeAtLine(physicalLine)
+                    if exists {
+                        m.currentPath = node.Path
+                    }
+
 					m.ScrollUp()
 				}
 			case "down", "j":
@@ -105,6 +114,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					if m.cursorY >= len(m.visibleLines2.content) {
 						m.cursorY = len(m.visibleLines2.content) - 1
 					}
+                    physicalLine := m.tree.VirtualToRealLines[m.cursorY]
+                    node, exists := m.tree.GetNodeAtLine(physicalLine)
+                    if exists {
+                        m.currentPath = node.Path
+                    }
 					m.ScrollDown()
 				}
 
@@ -147,6 +161,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				//m.firstVisibleLine = 0
 				m.margin = 3
 				m.windowLines = msg.Height - 1 // for the status bar
+                m.width = msg.Width
                 
 				m.tree.PrintAsJSONFromRoot()
 
@@ -164,6 +179,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.ready = true
 			} else {
 				m.windowLines = msg.Height - 1 // for the status bar
+                m.width = msg.Width
 				m.firstVisibleLine = m.visibleLines2.firstLine
 
 				log.Printf("cursor: %d; firstVis: %d; vl_firstVis: %d",
@@ -197,7 +213,20 @@ func (m model) View() string {
 		return "loading"
 	}
 	s := m.Print2()
+
+    // Print ~ on blank lines
+    blankLines := m.windowLines - len(m.visibleLines2.content) + m.visibleLines2.firstLine
+    for range blankLines {
+        s += "\n" + blankChar.Render("~")
+    }
+
+    s += "\n" + m.UpdateStatusBar()
 	return s
+}
+
+func (m model) UpdateStatusBar() string {
+    s := m.currentPath
+    return s
 }
 
 func (m model) Print() string {
