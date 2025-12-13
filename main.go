@@ -3,22 +3,37 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"strconv"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
-	// "github.com/charmbracelet/lipgloss"
+
+    "github.com/mattn/go-isatty"
 )
 
+var flags = []string{
+	"--help",
+}
+
 func main() {
-	// Sample JSON data
-	//jsonData := `[
-    //    {
-    //        "helo": ["hola","oi"]
-    //    }
-    //]`
+    var args []string
+	for _, arg := range os.Args[1:] {
+        switch arg {
+		case "-h", "--help":
+			fmt.Println(usage())
+			return
+		case "-v", "-V", "--version":
+			fmt.Println("vj", version)
+			return
+        default:
+			args = append(args, arg)
+		}
+	}
+
+
 	jsonData := `{
         "user": {
             "name": "John",
@@ -39,6 +54,47 @@ func main() {
         "customer": null,
         "active": true
     }`
+
+    fd := os.Stdin.Fd()
+	stdinIsTty := isatty.IsTerminal(fd) || isatty.IsCygwinTerminal(fd)
+
+	var src io.Reader
+
+	if stdinIsTty {
+		if len(args) == 0 {
+			// $ vj
+			fmt.Println(usage())
+			return
+		} else {
+			// $ vj file.json
+			filePath := args[0]
+            file, err := os.OpenFile(filePath, os.O_RDONLY, 0)
+            if err != nil {
+                fmt.Printf("Error reading file: %v\n", err)
+                os.Exit(1)
+            }
+            defer file.Close()
+            src = file
+		}
+	} else {
+		// $ cat file.json | vj
+		src = os.Stdin
+	}
+
+    b, err := io.ReadAll(src)
+    if err != nil {
+        panic(err)
+    }
+
+    jsonData = string(b)
+
+
+	// Sample JSON data
+	//jsonData := `[
+    //    {
+    //        "helo": ["hola","oi"]
+    //    }
+    //]`
 
 	// Parse JSON
 	var data interface{}
