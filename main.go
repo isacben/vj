@@ -18,6 +18,8 @@ var flags = []string{
 	"--help",
 }
 
+var repeatBuffer string
+
 func main() {
     var args []string
 	for _, arg := range os.Args[1:] {
@@ -149,9 +151,18 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch msg.String() {
 			case "q":
 				return m, tea.Quit
+            case "0", "1", "2", "3", "4", "5", "6", "7", "8", "9":
+				{
+					repeatBuffer += fmt.Sprintf("%c", msg.Runes[0])
+				}
 			case "up", "k":
 				{
-					m.cursorY--
+                    steps := 1
+                    if repeatBuffer != "" {
+                        steps = timesToRepeat()
+                    }
+                    m.cursorY -= steps
+
 					if m.cursorY < 0 {
 						m.cursorY = 0
 					}
@@ -166,7 +177,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			case "down", "j":
 				{
-					m.cursorY++
+                    steps := 1
+                    if repeatBuffer != "" {
+                        steps = timesToRepeat()
+                    }
+                    m.cursorY += steps
+
 					if m.cursorY >= len(m.visibleLines2.content) {
 						m.cursorY = len(m.visibleLines2.content) - 1
 					}
@@ -511,4 +527,15 @@ func (m model) ScrollUp() {
 		m.visibleLines2.UpdateVisibleLines2(m.firstVisibleLine,
 			m.windowLines)
 	}
+}
+
+func timesToRepeat() int {
+	number, err := strconv.Atoi(repeatBuffer)
+
+	if err != nil {
+		log.Fatal("Error converting string to int:", err)
+	}
+
+	repeatBuffer = ""
+	return number
 }
