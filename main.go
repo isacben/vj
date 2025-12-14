@@ -117,6 +117,20 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				{
 					repeatBuffer += fmt.Sprintf("%c", msg.Runes[0])
 				}
+            case "g":
+                {
+                    // Move the cursos to the top
+                    m.cursorY = 0
+					m.ScrollUp()
+                }
+            case "G":
+                {
+                    // Move the cursos to the end of the file
+                    if len(m.tree.VirtualToRealLines) > 0 {
+                        m.cursorY = len(m.tree.VirtualToRealLines) - 1
+                        m.ScrollDown()
+                    }
+                }
 			case "up", "k":
 				{
                     steps := 1
