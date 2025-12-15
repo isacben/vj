@@ -349,6 +349,23 @@ func (jt *JSONTree) collectLines(startPath string, indent int, result *[]LineMet
 		}
 
 	case ArrayType:
+		// Add opening brace if it's root
+        if isRoot {
+            openBrace := LineMetadata{
+                LineNumber:  len(*result),
+                LineType:    OpenBracket,
+                Content:     "[",
+                NodePath:    startPath,
+                NodeType:    node.Type,
+                Indent:      indent,
+                BracketChar: "[",
+                IsCollapsed: jt.IsCollapsed(startPath),
+                HasChildren: jt.HasChildren(startPath),
+            }
+            *result = append(*result, openBrace)
+            jt.VirtualToRealLines = append(jt.VirtualToRealLines, node.LineNumber)
+        }
+
 		// Add key line if this isn't root
 		if !isRoot && node.Key != "" {
 			keyLine := LineMetadata{
@@ -451,10 +468,13 @@ func BuildTree(data interface{}, basePath string, tree *JSONTree) *JSONTree {
 		tree.lineCounter++
 	}
 
-	createNode := func(path string, value interface{}, key string) *Node {
+	createNode := func(path string, value interface{},
+        key string, isParentArray bool) *Node {
+
 		nodeType := getNodeType(value)
 		depth := getDepth(path)
-		isArrayElement := regexp.MustCompile(`\[\d+\]$`).MatchString(path)
+		isArrayElement := regexp.MustCompile(`\[\d+\]$`).MatchString(path) ||
+            isParentArray
 
 		node := &Node{
 			Path:           path,
@@ -478,7 +498,7 @@ func BuildTree(data interface{}, basePath string, tree *JSONTree) *JSONTree {
 		// map[string]interface{} if for JSON objects
 		for key, value := range v {
 			childPath := buildChildPath(basePath, key, false)
-			node := createNode(childPath, value, key)
+			node := createNode(childPath, value, key, false)
 			tree.Nodes[childPath] = node
 			tree.LineNumbers[node.LineNumber] = node
 			tree.AddChild(basePath, childPath)
@@ -495,7 +515,7 @@ func BuildTree(data interface{}, basePath string, tree *JSONTree) *JSONTree {
 		for i, value := range v {
 			key := strconv.Itoa(i)
 			childPath := buildChildPath(basePath, key, true)
-			node := createNode(childPath, value, fmt.Sprintf("[%d]", i))
+			node := createNode(childPath, value, fmt.Sprintf("[%d]", i), true)
 			tree.Nodes[childPath] = node
 			tree.LineNumbers[node.LineNumber] = node
 			tree.AddChild(basePath, childPath)

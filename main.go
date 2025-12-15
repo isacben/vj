@@ -371,9 +371,15 @@ func RenderLine(line LineMetadata, hasCursor bool) string {
                 return RenderIndent(indent, isSelected) + 
                     RenderSyntax(line.BracketChar, hasCursor, isSelected)
             } else {
+                collapsedContent := ""
+                if line.BracketChar == "{" {
+                    collapsedContent = "...}"
+                } else {
+                    collapsedContent = "...]"
+                }
                 return RenderIndent(indent, isSelected) + 
-                    RenderSyntax("{", hasCursor, isSelected) +
-                    RenderSyntax("...}", false, isSelected)
+                    RenderSyntax(line.BracketChar, hasCursor, isSelected) +
+                    RenderSyntax(collapsedContent, false, isSelected)
             }
         }
 
