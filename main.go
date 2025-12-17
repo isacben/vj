@@ -173,11 +173,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "left", "h":
 				{
 					physicalLine := m.tree.VirtualToRealLines[m.cursorY]
-                    for i,n := range m.tree.VirtualToRealLines {
-                        log.Println(i, n)
-                    }
-
-					log.Println("collapse physical line:", physicalLine)
 					node, exists := m.tree.GetNodeAtLine(physicalLine)
 					if exists {
 						m.tree.Collapse(node.Path)
@@ -190,7 +185,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "right", "l":
 				{
 					physicalLine := m.tree.VirtualToRealLines[m.cursorY]
-					log.Println("expand physical line:", physicalLine)
 					node, exists := m.tree.GetNodeAtLine(physicalLine)
 					if exists {
 						m.tree.Expand(node.Path)
@@ -222,9 +216,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.windowLines = msg.Height - 1 // for the status bar
                 m.width = msg.Width
 				m.firstVisibleLine = m.visibleLines2.firstLine
-
-				log.Printf("cursor: %d; firstVis: %d; vl_firstVis: %d",
-					m.cursorY, m.firstVisibleLine, m.visibleLines2.firstLine)
 
 				if m.windowLines <= 2*m.margin+3 {
 					m.margin = 0
