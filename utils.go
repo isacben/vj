@@ -25,8 +25,8 @@ Key bindings:
    }                     move cursor to next sibling
    g                     move cursor to the first line of the document
    G                     move cursor to the last line of the document
-   :                     Switch to command mode
-   :.                    Find path in JSON, for example :.users[0].email
-   :q                    Quit`, version,
+   :                     switch to command mode
+   :.                    find path in JSON, for example :.users[0].email
+   :q                    quit`, version,
 	)
 }
