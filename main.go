@@ -6,12 +6,13 @@ import (
 	"io"
 	"log"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 
-    "github.com/mattn/go-isatty"
+	"github.com/mattn/go-isatty"
 )
 
 var repeatBuffer string
@@ -269,6 +270,11 @@ func (m model) UpdateNormalMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
                     m.visibleLines2.total)
             }
         }
+
+    case "{":
+        m.moveToPreviousSibling()
+    case "}":
+        m.moveToNextSibling()
     }
 
     return m, nil
@@ -389,6 +395,111 @@ func (m *model) findVirtualLineForPath(path string) (int, bool) {
         }
     }
     return 0, false
+}
+
+func (m *model) isPathVisible(path string) bool {
+    node, exists := m.tree.Nodes[path]
+    if !exists {
+        return false
+    }
+    
+    if slices.Contains(m.tree.VirtualToRealLines, node.LineNumber) {
+        return true
+    }
+
+    return false
+}
+
+// Get visble siblings only
+func (m *model) getVisibleSiblings() []string {
+    physicalLine := m.tree.VirtualToRealLines[m.cursorY]
+    currentNode, exists := m.tree.GetNodeAtLine(physicalLine)
+    if !exists {
+        return nil
+    }
+
+    allSiblings := m.tree.GetChildren(currentNode.Parent)
+    visibleSiblings := make([]string, 0)
+    
+    for _, siblingPath := range allSiblings {
+        if m.isPathVisible(siblingPath) {
+            visibleSiblings = append(visibleSiblings, siblingPath)
+        }
+    }
+
+    return visibleSiblings
+}
+
+func (m *model) moveToNextSibling() {
+    siblings := m.getVisibleSiblings()
+    if len(siblings) <= 1 {
+        return // No siblings or only current node
+    }
+
+    physicalLine := m.tree.VirtualToRealLines[m.cursorY]
+    currentNode, _ := m.tree.GetNodeAtLine(physicalLine)
+    currentIndex := -1
+
+    // Find current position in siblings array
+    for i, siblingPath := range siblings {
+        if siblingPath == currentNode.Path {
+            currentIndex = i
+            break
+        }
+    }
+
+    if currentIndex == -1 || currentIndex >= len(siblings)-1 {
+        return // Not found or already at last sibling
+    }
+
+    // Move to next sibling
+    nextSiblingPath := siblings[currentIndex+1]
+    if virtualLine, found := m.findVirtualLineForPath(nextSiblingPath); found {
+        m.cursorY = virtualLine
+        m.updateCurrentPath()
+        m.ScrollDown()
+    }
+}
+
+func (m *model) moveToPreviousSibling() {
+    siblings := m.getVisibleSiblings()
+    if len(siblings) <= 1 {
+        return
+    }
+
+    physicalLine := m.tree.VirtualToRealLines[m.cursorY]
+    currentNode, _ := m.tree.GetNodeAtLine(physicalLine)
+    currentIndex := -1
+
+    for i, siblingPath := range siblings {
+        if siblingPath == currentNode.Path {
+            currentIndex = i
+            break
+        }
+    }
+
+    if currentIndex <= 0 {
+      return // Not found or already at first sibling
+    }
+
+    prevSiblingPath := siblings[currentIndex-1]
+    if virtualLine, found := m.findVirtualLineForPath(prevSiblingPath); found {
+      m.cursorY = virtualLine
+      m.updateCurrentPath()
+      m.ScrollUp()
+    }
+}
+
+// Helper to update current path
+func (m *model) updateCurrentPath() {
+    physicalLine := m.tree.VirtualToRealLines[m.cursorY]
+    node, exists := m.tree.GetNodeAtLine(physicalLine)
+    if exists {
+        m.currentPath = node.Path
+        if m.mode == Normal {
+            m.statusBar = m.currentPath
+        }
+    }
 }
 
 func (m model) View() string {
@@ -587,6 +698,7 @@ func RenderLine(line LineMetadata, hasCursor bool) string {
 
 	return line.Content
 }
+
 
 func (m model) ScrollDown() {
 	if m.cursorY > m.visibleLines2.firstLine+
