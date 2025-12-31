@@ -45,4 +45,4 @@ echo '{"helo": "world"}' | vj
 
 `:` - switch to commands mode<br>
 `:.` - find path in JSON, for example `:.users[0].email`<br>
-`:q` - 1uit<br>
+`:q` - quit<br>
